@@ -16,6 +16,10 @@ How?
 
         ./intro.py <filename>
 
+- Or, automatically download the latest podcast from the BBC website, and split it, in one step:
+
+        ./intro.py --latest
+
 Why?
 ----
 
