@@ -1,8 +1,6 @@
 #!/usr/bin/python
-import sys
-import urllib
-import urllib2
-import re
+import sys, re, os, os.path
+import urllib, urllib2
 from pydub import AudioSegment
 
 TRACK_LISTING_URL = 'http://freshonthenet.co.uk/{1}/{2}/mixtape{0}/'
@@ -81,11 +79,13 @@ def parse_track_info(html):
 
 def split_track(input_filename, infos, date_string):
     album_name = 'BBC Introducing Mixtape {0}'.format(date_string)
+    if not os.path.isdir(album_name):
+        os.mkdir(album_name)
     print 'Reading {0}'.format(input_filename)
     input_seg = AudioSegment.from_mp3(input_filename)
     infos[-1]['finish'] = len(input_seg)
     for info in infos:
-        track_filename = '{0} - {1}.mp3'.format(info['artist'], info['title'])
+        track_filename = '{0}/{1} - {2}.mp3'.format(album_name, info['artist'], info['title'])
         print 'Writing {0}'.format(track_filename)
         track_seg = input_seg[info['start'] : info['finish']]
         track_seg.export(track_filename, format='mp3', tags={
