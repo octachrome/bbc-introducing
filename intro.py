@@ -1,12 +1,16 @@
 #!/usr/bin/python
-import glob
 import sys
+import urllib
 import urllib2
 import re
 from pydub import AudioSegment
 
+TRACK_LISTING_URL = 'http://freshonthenet.co.uk/{1}/{2}/mixtape{0}/'
+TRACK_INFO_PATTERN = '<p><strong>(.*?) - (.*?)</strong> \[starts ([0-9]+):([0-9]+)\]<br />'
+PODCAST_URL = 'http://www.bbc.co.uk/programmes/p02nrw4q/episodes/downloads'
+
 # Translate nasty unicode chars to ascii
-codepoints = {
+CODEPOINTS = {
     '8220': '"',
     '8221': '"',
     '8230': '...',
@@ -16,23 +20,35 @@ codepoints = {
     '038': '&'
 }
 
-def main(input_filename):
-    date_parts = extract_date_parts(input_filename)
-    if not date_parts:
-        print 'Could not figure out the podcast date from filename: {0}'.format(input_filename)
-        sys.exit(1)
-    url = 'http://freshonthenet.co.uk/{1}/{2}/mixtape{0}/'.format(*date_parts)
+def main(input_filename, download=False):
+    if download:
+        latest = download_latest()
+        input_filename = latest[0]
+        disposition = latest[1]['Content-Disposition']
+        date_parts = extract_date_parts(disposition)
+    else:
+        date_parts = extract_date_parts(input_filename)
+    url = TRACK_LISTING_URL.format(*date_parts)
     html = read_url(url)
     infos = parse_track_info(html)
-    split_track(input_filename, infos, '20150803')
+    split_track(input_filename, infos, date_parts[0])
+
+def download_latest():
+    html = read_url(PODCAST_URL)
+    match = re.search('http://[^"]+?\.mp3', html)
+    if not match:
+        return None
+    url = match.group(0)
+    print 'Downloading {0}'.format(url)
+    return urllib.urlretrieve(url)
 
 def extract_date_parts(filename):
-    print filename
     match = re.search('(20\d{2})(\d{2})(\d{2})', filename)
     if match:
         return (match.group(0), match.group(1), match.group(2))
     else:
-        return None
+        print 'Could not figure out the podcast date from filename: {0}'.format(filename)
+        sys.exit(1)
 
 def read_url(url):
     print 'Downloading {0}'.format(url)
@@ -41,16 +57,15 @@ def read_url(url):
     req.add_header('User-Agent', 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/43.0.2357.130 Safari/537.36')
     f = urllib2.urlopen(req)
     html = f.read()
-    for uni in codepoints:
+    for uni in CODEPOINTS:
         pattern = '&#' + uni + ';'
-        html = html.replace(pattern, codepoints[uni])
+        html = html.replace(pattern, CODEPOINTS[uni])
     return html
 
 def parse_track_info(html):
-    pattern = re.compile('<p><strong>(.*?) - (.*?)</strong> \[starts ([0-9]+):([0-9]+)\]<br />')
-    matches = pattern.findall(html)
     infos = []
     info = None
+    matches = re.findall(TRACK_INFO_PATTERN, html)
     for match in matches:
         start = 1000 * (60 * int(match[2]) + int(match[3]))
         if info:
@@ -81,6 +96,9 @@ def split_track(input_filename, infos, date_string):
 
 if __name__ == '__main__':
     if len(sys.argv) < 2:
-        print 'Usage: intro.py <filename>'
+        print 'Usage: intro.py [--download | <filename>]'
         sys.exit(1)
-    main(sys.argv[1])
+    if sys.argv[1] == '--download':
+        main(None, download=True)
+    else:
+        main(sys.argv[1])
