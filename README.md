@@ -8,13 +8,13 @@ How?
 
 - Install prerequisites:
 
-    sudo pip install pydub
-    sudo apt-get install libav-tools
+        sudo pip install pydub
+        sudo apt-get install libav-tools
 
 - Download an episode from http://www.bbc.co.uk/programmes/p02nrw4q/episodes/downloads
 - Split it:
 
-    ./intro.py <filename>
+        ./intro.py <filename>
 
 Why?
 ----
